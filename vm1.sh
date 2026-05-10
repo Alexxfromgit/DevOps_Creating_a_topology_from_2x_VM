@@ -56,8 +56,9 @@ iface $INTERNAL_IF.$VLAN inet static
 address $VLAN_IP
 vlan-raw-device $INTERNAL_IF
 " >> $IF_CFG
+apt install vlan -y
 modprobe 8021q
-vconfig add $INTERNAL_IF $VLAN 
+vconfig add $INTERNAL_IF $VLAN
 ifconfig $INTERNAL_IF.$VLAN $VLAN_IP
 ###############################################################
 
@@ -70,10 +71,9 @@ echo $CUR_IP $HOSTNAME > /etc/hosts
 ######################### NAT #################################
 echo 1 > /proc/sys/net/ipv4/ip_forward
 iptables -A INPUT -i lo -j ACCEPT
-iptables -A FORWARD -i $EXTERNAL_IF -o $INTERNAL_IF -j ACCEPT
+iptables -A FORWARD -i $INTERNAL_IF -o $EXTERNAL_IF -j ACCEPT
+iptables -A FORWARD -i $EXTERNAL_IF -o $INTERNAL_IF -m state --state ESTABLISHED,RELATED -j ACCEPT
 iptables -t nat -A POSTROUTING -o $EXTERNAL_IF -j MASQUERADE
-iptables -A FORWARD -i $EXTERNAL_IF -m state --state ESTABLISHED,RELATED -j ACCEPT
-iptables -A FORWARD -i $EXTERNAL_IF -o $INTERNAL_IF -j REJECT
 ###############################################################
 
 ################# CERT CREATE CONFIG ##########################
@@ -128,8 +128,13 @@ upstream $HOSTNAME {
 server $APACHE_VLAN_IP:80;
 }
 server {
-listen  $CUR_IP:$NGINX_PORT ssl $HOSTNAME_server;
-server_name $HOSTNAME
+listen  $CUR_IP:80;
+server_name $HOSTNAME;
+return 444;
+}
+server {
+listen  $CUR_IP:$NGINX_PORT ssl;
+server_name $HOSTNAME;
 ssl on;
 ssl_certificate /etc/ssl/certs/web.crt;
 ssl_certificate_key /etc/ssl/certs/web.key;
